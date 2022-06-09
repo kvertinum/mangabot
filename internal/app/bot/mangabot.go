@@ -32,7 +32,7 @@ func SetupBot(config *Conifg) error {
 		api:    bot.Api,
 	}
 
-	privateRoutes := &routes{
+	botRoutes := &routes{
 		rapi:     rapi,
 		api:      bot.Api,
 		bot:      bot,
@@ -40,9 +40,8 @@ func SetupBot(config *Conifg) error {
 		uploader: uploader,
 	}
 
-	bot.OnPrivateMessage("/поиск", privateRoutes.search)
-
-	bot.OnPrivateMessage("/тайтл", privateRoutes.title)
+	bot.OnPrivateMessage("/поиск", botRoutes.search)
+	bot.OnPrivateMessage("/тайтл", botRoutes.title)
 
 	bot.RunSync()
 	return nil

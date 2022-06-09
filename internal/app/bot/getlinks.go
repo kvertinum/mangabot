@@ -2,7 +2,6 @@ package vkbot
 
 import (
 	"github.com/Kvertinum01/mangabot/internal/app/remanga"
-	"github.com/signintech/gopdf"
 )
 
 func linksByPages(pages [][]remanga.ChapterPage) ([]string, [][2]float64, float64) {
@@ -21,8 +20,4 @@ func linksByPages(pages [][]remanga.ChapterPage) ([]string, [][2]float64, float6
 		}
 	}
 	return strPages, sizes, float64(currH)
-}
-
-func pdfByLinks([]string) gopdf.GoPdf {
-	return gopdf.GoPdf{}
 }
