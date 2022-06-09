@@ -15,6 +15,10 @@ import (
 	"github.com/zemlyak-l/vkgottle/object"
 )
 
+const (
+	helpLink = "https://github.com/Kvertinum01/mangabot/blob/main/README.md"
+)
+
 type routes struct {
 	rapi     *remanga.RemangaAPI
 	bot      *bot.Bot
@@ -26,7 +30,7 @@ type routes struct {
 func (r *routes) help(message object.NewMessage) {
 	r.api.MessagesSend(&object.Message{
 		PeerID: message.PeerID,
-		Text:   "https://github.com/Kvertinum01/mangabot/blob/main/README.md",
+		Text:   "Помощь по командам:\n" + helpLink,
 	})
 }
 
