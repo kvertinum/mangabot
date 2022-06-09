@@ -2,10 +2,8 @@ package vkbot
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Kvertinum01/mangabot/internal/app/remanga"
@@ -39,33 +37,15 @@ func SetupBot(config *Conifg) error {
 		api:    bot.Api,
 	}
 
-	bot.OnPrivateMessage("/поиск", func(message object.NewMessage) {
-		if message.CmdArgs == nil {
-			bot.Api.MessagesSend(&object.Message{
-				PeerID: message.PeerID,
-				Text:   "Передайте название тайтла",
-			})
-			return
-		}
+	privateRoutes := &routes{
+		rapi:     rapi,
+		api:      bot.Api,
+		bot:      bot,
+		client:   fasthttpClient,
+		uploader: uploader,
+	}
 
-		mangaName := strings.Join(message.CmdArgs, " ")
-		answer := &remanga.SearchAnswer{}
-		if err := rapi.Search(mangaName, searchCount, answer); err != nil {
-			log.Fatal(err)
-		}
-
-		resAnswer := "Выберите нужный тайтл и используйте команду /тайтл <id> <том> <глава>:\n"
-		for _, value := range answer.Content {
-			resAnswer += fmt.Sprintf(
-				"• %s (ID %v)\n", value.RusName, value.Dir,
-			)
-		}
-
-		bot.Api.MessagesSend(&object.Message{
-			PeerID: message.PeerID,
-			Text:   resAnswer,
-		})
-	})
+	bot.OnPrivateMessage("/поиск", privateRoutes.search)
 
 	bot.OnPrivateMessage("/тайтл", func(message object.NewMessage) {
 		if len(message.CmdArgs) < 3 {
@@ -95,6 +75,10 @@ func SetupBot(config *Conifg) error {
 			})
 			return
 		}
+		bot.Api.MessagesSend(&object.Message{
+			PeerID: message.PeerID,
+			Text:   "Поиск главы...",
+		})
 		chapterStr := message.CmdArgs[2]
 		branch_id := title.Content.Branches[0].ID
 		for nowPage := 1; ; nowPage++ {
@@ -106,89 +90,92 @@ func SetupBot(config *Conifg) error {
 				break
 			}
 			for _, currChapter := range branch.Content {
-				if currChapter.Tome == tomInt && currChapter.Chapter == chapterStr {
-					bot.Api.MessagesSend(&object.Message{
-						PeerID: message.PeerID,
-						Text:   "Глава найдена! Создание PDF файла.",
+				if currChapter.Tome != tomInt || currChapter.Chapter != chapterStr {
+					continue
+				}
+
+				bot.Api.MessagesSend(&object.Message{
+					PeerID: message.PeerID,
+					Text:   "Глава найдена! Создание PDF файла.",
+				})
+
+				go func(currChapter *remanga.BranchContent, peerID int) {
+					chapter := &remanga.ChapterInfo{}
+					if err := rapi.ChapterById(currChapter.ID, chapter); err != nil {
+						log.Fatal(err)
+					}
+					links, allSizes, currH := linksByPages(chapter.Content.Pages)
+
+					tp := gofpdf.ImageOptions{ImageType: "jpeg"}
+
+					var heightSum float64
+
+					currW := float64(chapter.Content.Pages[1][1].Width)
+					pdf := gofpdf.NewCustom(&gofpdf.InitType{
+						OrientationStr: "P",
+						UnitStr:        "mm",
+						SizeStr:        "A4",
+						Size: gofpdf.SizeType{
+							Wd: currW,
+							Ht: currH,
+						},
+						FontDirStr: "",
 					})
 
-					go func(currChapter *remanga.BranchContent, peerID int) {
-						chapter := &remanga.ChapterInfo{}
-						if err := rapi.ChapterById(currChapter.ID, chapter); err != nil {
-							log.Fatal(err)
-						}
-						links, allSizes, currH := linksByPages(chapter.Content.Pages)
+					for ind, imgLink := range links {
+						req := fasthttp.AcquireRequest()
+						resp := fasthttp.AcquireResponse()
 
-						tp := gofpdf.ImageOptions{ImageType: "jpeg"}
+						req.Header.SetMethod("GET")
+						req.SetRequestURI(imgLink)
 
-						var heightSum float64
+						fasthttpClient.Do(req, resp)
+						body := resp.Body()
+						reader := bytes.NewReader(body)
 
-						currW := float64(chapter.Content.Pages[1][1].Width)
-						pdf := gofpdf.NewCustom(&gofpdf.InitType{
-							OrientationStr: "P",
-							UnitStr:        "mm",
-							SizeStr:        "A4",
-							Size: gofpdf.SizeType{
-								Wd: currW,
-								Ht: currH,
-							},
-							FontDirStr: "",
-						})
+						sizes := allSizes[ind]
+						ratio := sizes[0] / currW
+						resH := sizes[1] / ratio
 
-						for ind, imgLink := range links {
-							req := fasthttp.AcquireRequest()
-							resp := fasthttp.AcquireResponse()
-
-							req.Header.SetMethod("GET")
-							req.SetRequestURI(imgLink)
-
-							fasthttpClient.Do(req, resp)
-							body := resp.Body()
-							reader := bytes.NewReader(body)
-
-							sizes := allSizes[ind]
-							ratio := sizes[0] / currW
-							resH := sizes[1] / ratio
-
-							if heightSum == 0 {
-								heightSum = sizes[1]
-							}
-
-							var resY float64
-
-							if resH+heightSum < currH {
-								resY = heightSum
-								heightSum += resH
-							} else {
-								heightSum = resH
-								pdf.AddPage()
-							}
-
-							pdf.RegisterImageOptionsReader(imgLink, tp, reader)
-							pdf.Image(imgLink, 0, resY, currW, resH, false, tp.ImageType, 0, "")
-
-							fasthttp.ReleaseRequest(req)
-							fasthttp.ReleaseResponse(resp)
-						}
-						pdfBuffer := &bytes.Buffer{}
-						if err := pdf.Output(pdfBuffer); err != nil {
-							log.Fatal(err)
-						}
-						pdfBytes := pdfBuffer.Bytes()
-						attachment, err := uploader.docUpload(peerID, pdfBytes)
-						if err != nil {
-							log.Fatal(err)
+						if heightSum == 0 {
+							heightSum = sizes[1]
 						}
 
-						bot.Api.MessagesSend(&object.Message{
-							PeerID:     message.PeerID,
-							Attachment: attachment,
-						})
+						var resY float64
 
-					}(currChapter, message.PeerID)
+						if resH+heightSum < currH {
+							resY = heightSum
+							heightSum += resH
+						} else {
+							heightSum = resH
+							pdf.AddPage()
+						}
 
-					return
-				}
+						pdf.RegisterImageOptionsReader(imgLink, tp, reader)
+						pdf.Image(imgLink, 0, resY, currW, resH, false, tp.ImageType, 0, "")
+
+						fasthttp.ReleaseRequest(req)
+						fasthttp.ReleaseResponse(resp)
+					}
+					pdfBuffer := &bytes.Buffer{}
+					if err := pdf.Output(pdfBuffer); err != nil {
+						log.Fatal(err)
+					}
+					pdfBytes := pdfBuffer.Bytes()
+					attachment, err := uploader.docUpload(peerID, pdfBytes)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					bot.Api.MessagesSend(&object.Message{
+						PeerID:     message.PeerID,
+						Attachment: attachment,
+					})
+
+				}(currChapter, message.PeerID)
+
+				return
+
 			}
 		}
 		bot.Api.MessagesSend(&object.Message{
