@@ -23,6 +23,13 @@ type routes struct {
 	uploader *docUploader
 }
 
+func (r *routes) help(message object.NewMessage) {
+	r.api.MessagesSend(&object.Message{
+		PeerID: message.PeerID,
+		Text:   "https://github.com/Kvertinum01/mangabot/blob/main/README.md",
+	})
+}
+
 func (r *routes) search(message object.NewMessage) {
 	if message.CmdArgs == nil {
 		r.api.MessagesSend(&object.Message{
