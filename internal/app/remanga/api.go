@@ -20,6 +20,8 @@ type RemangaAPI struct {
 }
 
 func NewRemangaAPI() *RemangaAPI {
+	// Setup RemangaAPI
+
 	return &RemangaAPI{
 		Url:     baseApiUrl,
 		Encoder: schema.NewEncoder(),
@@ -33,6 +35,7 @@ func NewRemangaAPI() *RemangaAPI {
 }
 
 func (api *RemangaAPI) Request(methodName string, data interface{}, target interface{}) error {
+	// Request to remanga api
 	resUrl := api.Url + methodName + "/?"
 
 	urlData := url.Values{}
