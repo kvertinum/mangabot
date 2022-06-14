@@ -5,7 +5,7 @@ import (
 
 	"github.com/Kvertinum01/mangabot/internal/app/remanga"
 	"github.com/valyala/fasthttp"
-	"github.com/zemlyak-l/vkgottle/bot"
+	"github.com/zemlyak-l/vkcringe/bot"
 )
 
 const (

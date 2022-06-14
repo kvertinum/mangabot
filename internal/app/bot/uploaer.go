@@ -7,7 +7,7 @@ import (
 	"mime/multipart"
 
 	"github.com/valyala/fasthttp"
-	"github.com/zemlyak-l/vkgottle/api"
+	"github.com/zemlyak-l/vkcringe/api"
 )
 
 type docsSaveRes struct {

@@ -10,9 +10,9 @@ import (
 	"github.com/Kvertinum01/mangabot/internal/app/remanga"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/valyala/fasthttp"
-	"github.com/zemlyak-l/vkgottle/api"
-	"github.com/zemlyak-l/vkgottle/bot"
-	"github.com/zemlyak-l/vkgottle/object"
+	"github.com/zemlyak-l/vkcringe/api"
+	"github.com/zemlyak-l/vkcringe/bot"
+	"github.com/zemlyak-l/vkcringe/object"
 )
 
 const (
@@ -139,13 +139,14 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 	if err := r.rapi.ChapterById(currChapter.ID, chapter); err != nil {
 		log.Fatal(err)
 	}
-	links, allSizes, currH := linksByPages(chapter.Content.Pages)
+	links, allSizes, pdfSizes := linksByPages(chapter.Content.Pages)
 
 	tp := gofpdf.ImageOptions{ImageType: "jpeg"}
 
 	var heightSum float64
 
-	currW := float64(chapter.Content.Pages[1][1].Width)
+	currW := pdfSizes[0]
+	currH := pdfSizes[1]
 	pdf := gofpdf.NewCustom(&gofpdf.InitType{
 		OrientationStr: "P",
 		UnitStr:        "mm",
@@ -203,8 +204,10 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		log.Fatal(err)
 	}
 
+	textAnswer := "Если вы видиле картинку, порезанную посередине - скажите спасибо Remanga"
 	r.api.MessagesSend(&object.Message{
 		PeerID:     peerID,
+		Text:       textAnswer,
 		Attachment: attachment,
 	})
 
