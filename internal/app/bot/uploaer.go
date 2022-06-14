@@ -40,7 +40,7 @@ type docUploader struct {
 	api    *api.Api
 }
 
-func (u *docUploader) docUpload(peerID int, file []byte) (string, error) {
+func (u *docUploader) docUpload(peerID int, docName string, file []byte) (string, error) {
 	uploadServerRes := &getUploadServerRes{}
 	if err := u.api.Request("docs.getMessagesUploadServer", getUploadServerVal{
 		Type: "doc", PeerID: peerID,
@@ -81,7 +81,7 @@ func (u *docUploader) docUpload(peerID int, file []byte) (string, error) {
 
 	finalDocument := &docsSaveRes{}
 	if err := u.api.Request("docs.save", docsSaveVal{
-		File: uploadedFile.File, Title: "chapter",
+		File: uploadedFile.File, Title: docName,
 	}, finalDocument); err != nil {
 		return "", err
 	}

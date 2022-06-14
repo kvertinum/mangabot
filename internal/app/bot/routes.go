@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	helpLink = "https://github.com/Kvertinum01/mangabot/blob/main/README.md"
+	helpLink = "https://vk.cc/cemj4R"
 )
 
 type routes struct {
@@ -49,7 +49,7 @@ func (r *routes) search(message object.NewMessage) {
 		log.Fatal(err)
 	}
 
-	resAnswer := "Выберите нужный тайтл и используйте команду /тайтл <id> <том> <глава>:\n"
+	resAnswer := "Выберите нужный тайтл и используйте команду /глава <id> <том> <глава>:\n"
 	for _, value := range answer.Content {
 		resAnswer += fmt.Sprintf(
 			"• %s (ID %v)\n", value.RusName, value.Dir,
@@ -62,11 +62,11 @@ func (r *routes) search(message object.NewMessage) {
 	})
 }
 
-func (r *routes) title(message object.NewMessage) {
+func (r *routes) chapter(message object.NewMessage) {
 	if len(message.CmdArgs) < 3 {
 		r.api.MessagesSend(&object.Message{
 			PeerID: message.PeerID,
-			Text:   "Используйте команду правильно:\n/тайтл <id> <том> <глава>",
+			Text:   "Используйте команду правильно:\n/глава <id> <том> <глава>",
 		})
 		return
 	}
@@ -95,10 +95,10 @@ func (r *routes) title(message object.NewMessage) {
 		Text:   "Поиск главы...",
 	})
 	chapterStr := message.CmdArgs[2]
-	branch_id := title.Content.Branches[0].ID
+	branchID := title.Content.Branches[0].ID
 	for nowPage := 1; ; nowPage++ {
 		branch := &remanga.BranchInfo{}
-		if err := r.rapi.BranchById(branch_id, nowPage, branch); err != nil {
+		if err := r.rapi.BranchById(branchID, nowPage, 300, branch); err != nil {
 			log.Fatal(err)
 		}
 		if branch.Content == nil {
@@ -107,6 +107,14 @@ func (r *routes) title(message object.NewMessage) {
 		for _, currChapter := range branch.Content {
 			if currChapter.Tome != tomInt || currChapter.Chapter != chapterStr {
 				continue
+			}
+
+			if currChapter.IsPaid {
+				r.api.MessagesSend(&object.Message{
+					PeerID: message.PeerID,
+					Text:   "Невозможно скачать платную главу!",
+				})
+				return
 			}
 
 			r.api.MessagesSend(&object.Message{
@@ -189,7 +197,8 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		log.Fatal(err)
 	}
 	pdfBytes := pdfBuffer.Bytes()
-	attachment, err := r.uploader.docUpload(peerID, pdfBytes)
+	docName := fmt.Sprintf("chapter %v-%s", currChapter.Tome, currChapter.Chapter)
+	attachment, err := r.uploader.docUpload(peerID, docName, pdfBytes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -199,4 +208,47 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		Attachment: attachment,
 	})
 
+}
+
+func (r *routes) chapters(message object.NewMessage) {
+	if len(message.CmdArgs) == 0 {
+		r.api.MessagesSend(&object.Message{
+			PeerID: message.PeerID,
+			Text:   "Укажите ID тайтла",
+		})
+	}
+	titleName := message.CmdArgs[0]
+	title := &remanga.TitleInfo{}
+	if err := r.rapi.TitleByDir(titleName, title); err != nil {
+		log.Fatal(err)
+	}
+	if title.Content == nil {
+		r.api.MessagesSend(&object.Message{
+			PeerID: message.PeerID,
+			Text:   "Тайтл не найден",
+		})
+		return
+	}
+	branchID := title.Content.Branches[0].ID
+	branch := &remanga.BranchInfo{}
+	if err := r.rapi.BranchById(branchID, 1, 20, branch); err != nil {
+		log.Fatal(err)
+	}
+	answer := "Последние 20 глав:"
+	for _, currBranch := range branch.Content {
+		answer += fmt.Sprintf(
+			"\nТом %v Глава %s",
+			currBranch.Tome, currBranch.Chapter,
+		)
+		if currBranch.Name != "" {
+			answer += " - " + currBranch.Name
+		}
+		if currBranch.IsPaid {
+			answer += " (Платная)"
+		}
+	}
+	r.api.MessagesSend(&object.Message{
+		PeerID: message.PeerID,
+		Text:   answer,
+	})
 }

@@ -36,12 +36,12 @@ type BranchValue struct {
 	Count    int `schema:"count"`
 }
 
-func (api *RemangaAPI) BranchById(branchID int, page int, target *BranchInfo) error {
+func (api *RemangaAPI) BranchById(branchID int, page int, count int, target *BranchInfo) error {
 	return api.Request(
 		"titles/chapters", BranchValue{
 			BranchID: branchID,
 			Page:     page,
-			Count:    300,
+			Count:    count,
 		}, target,
 	)
 }

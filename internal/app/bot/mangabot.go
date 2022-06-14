@@ -41,7 +41,8 @@ func SetupBot(config *Conifg) error {
 	}
 
 	bot.OnPrivateMessage("/поиск", botRoutes.search)
-	bot.OnPrivateMessage("/тайтл", botRoutes.title)
+	bot.OnPrivateMessage("/глава", botRoutes.chapter)
+	bot.OnPrivateMessage("/главы", botRoutes.chapters)
 	bot.OnPrivateMessage("/help", botRoutes.help)
 
 	bot.RunSync()
