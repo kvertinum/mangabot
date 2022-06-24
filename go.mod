@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/schema v1.2.0
 	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/valyala/fasthttp v1.37.0
-	github.com/zemlyak-l/vkcringe v0.0.0-20220614130444-0c3271fccb89
+	github.com/zemlyak-l/vkcringe v0.0.0-20220624080727-68e713844cbf
 )
 
 require (

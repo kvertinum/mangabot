@@ -139,14 +139,14 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 	if err := r.rapi.ChapterById(currChapter.ID, chapter); err != nil {
 		log.Fatal(err)
 	}
-	links, allSizes, pdfSizes := linksByPages(chapter.Content.Pages)
+	linksObj := linksByPages(chapter.Content.Pages)
 
 	tp := gofpdf.ImageOptions{ImageType: "jpeg"}
 
 	var heightSum float64
 
-	currW := pdfSizes[0]
-	currH := pdfSizes[1]
+	currW := linksObj.currSizes[0]
+	currH := linksObj.currSizes[1]
 	pdf := gofpdf.NewCustom(&gofpdf.InitType{
 		OrientationStr: "P",
 		UnitStr:        "mm",
@@ -158,7 +158,7 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		FontDirStr: "",
 	})
 
-	for ind, imgLink := range links {
+	for ind, imgLink := range linksObj.strPages {
 		req := fasthttp.AcquireRequest()
 		resp := fasthttp.AcquireResponse()
 
@@ -169,7 +169,7 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		body := resp.Body()
 		reader := bytes.NewReader(body)
 
-		sizes := allSizes[ind]
+		sizes := linksObj.sizes[ind]
 		ratio := sizes[0] / currW
 		resH := sizes[1] / ratio
 
@@ -204,7 +204,7 @@ func (r *routes) createAndSend(currChapter *remanga.BranchContent, peerID int) {
 		log.Fatal(err)
 	}
 
-	textAnswer := "Если вы видиле картинку, порезанную посередине - скажите спасибо Remanga"
+	textAnswer := "Если вы видите картинку, порезанную посередине - скажите спасибо Remanga"
 	r.api.MessagesSend(&object.Message{
 		PeerID:     peerID,
 		Text:       textAnswer,
